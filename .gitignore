@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+
+# Virtual environments
+sklearn-env/
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data & artifacts
+*.csv
+*.parquet
+*.joblib
+*.pkl
+*.pickle
+model_metrics.json
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
