@@ -13,11 +13,11 @@ st.set_page_config(
 )
 
 # ---------------- LOAD MODEL ----------------
-try:
-    model = pickle.load(open("student_model.pkl", "rb"))
-except Exception:
-    model = None
-    st.warning("⚠ Model file not found.")
+def load_model():
+    try:
+        return pickle.load(open("student_model.pkl", "rb"))
+    except Exception:
+        return None
 
 # ---------------- LOAD METRICS ----------------
 def load_metrics():
@@ -27,7 +27,32 @@ def load_metrics():
     except Exception:
         return None
 
-metrics = load_metrics()
+if "model" not in st.session_state:
+    st.session_state["model"] = load_model()
+
+if "metrics" not in st.session_state:
+    st.session_state["metrics"] = load_metrics()
+
+if "training_attempted" not in st.session_state:
+    st.session_state["training_attempted"] = False
+
+if (st.session_state["model"] is None or st.session_state["metrics"] is None) and not st.session_state["training_attempted"]:
+    st.session_state["training_attempted"] = True
+    with st.spinner("Training model from dataset..."):
+        try:
+            from train_model import train_and_save
+
+            train_and_save()
+            st.session_state["model"] = load_model()
+            st.session_state["metrics"] = load_metrics()
+        except Exception:
+            pass
+
+model = st.session_state["model"]
+metrics = st.session_state["metrics"]
+
+if model is None:
+    st.warning("⚠ Model file not found. Ensure training completes successfully.")
 
 # ---------------- TITLE ----------------
 st.title("🎓 Student Performance Prediction")

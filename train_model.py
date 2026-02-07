@@ -17,23 +17,6 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import GridSearchCV, train_test_split
 
-df = pd.read_csv("student_data_cleaned.csv")
-
-X = df.drop("Pass", axis=1)
-y = df["Pass"]
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
-
-models = {
-    "Logistic Regression": LogisticRegression(max_iter=1000),
-    "Decision Tree": DecisionTreeClassifier(random_state=42),
-    "Random Forest": RandomForestClassifier(random_state=42),
-}
-
-model_results = []
-
 def evaluate_model(name, clf, X_tr, y_tr, X_te, y_te):
     clf.fit(X_tr, y_tr)
     if hasattr(clf, "predict_proba"):
@@ -59,62 +42,91 @@ def evaluate_model(name, clf, X_tr, y_tr, X_te, y_te):
         "best_threshold": float(best_t),
     }
 
-for model_name, model in models.items():
-    model_results.append(evaluate_model(model_name, model, X_train, y_train, X_test, y_test))
 
-params = {
-    "n_estimators": [150, 300],
-    "max_depth": [None, 8, 16],
-    "min_samples_split": [2, 5],
-    "min_samples_leaf": [1, 2],
-    "class_weight": ["balanced"],
-}
+def train_and_save(
+    data_path="student_data_cleaned.csv",
+    model_path="student_model.pkl",
+    metrics_path="model_metrics.json",
+):
+    df = pd.read_csv(data_path)
 
-grid = GridSearchCV(
-    RandomForestClassifier(random_state=42),
-    params,
-    cv=3,
-    scoring="f1",
-    n_jobs=-1,
-)
-grid.fit(X_train, y_train)
+    X = df.drop("Pass", axis=1)
+    y = df["Pass"]
 
-best_model = grid.best_estimator_
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
 
-y_proba = best_model.predict_proba(X_test)[:, 1]
+    models = {
+        "Logistic Regression": LogisticRegression(max_iter=1000),
+        "Decision Tree": DecisionTreeClassifier(random_state=42),
+        "Random Forest": RandomForestClassifier(random_state=42),
+    }
 
-thresholds = np.linspace(0.1, 0.9, 81)
-macro_f1_scores = [
-    f1_score(y_test, (y_proba >= t).astype(int), average="macro")
-    for t in thresholds
-]
-best_threshold = thresholds[int(np.argmax(macro_f1_scores))]
+    model_results = [
+        evaluate_model(model_name, model, X_train, y_train, X_test, y_test)
+        for model_name, model in models.items()
+    ]
 
-final_preds = (y_proba >= best_threshold).astype(int)
+    params = {
+        "n_estimators": [150, 300],
+        "max_depth": [None, 8, 16],
+        "min_samples_split": [2, 5],
+        "min_samples_leaf": [1, 2],
+        "class_weight": ["balanced"],
+    }
 
-metrics = {
-    "accuracy": float(accuracy_score(y_test, final_preds)),
-    "precision": float(precision_score(y_test, final_preds)),
-    "recall": float(recall_score(y_test, final_preds)),
-    "f1": float(f1_score(y_test, final_preds)),
-    "roc_auc": float(roc_auc_score(y_test, y_proba)),
-    "best_threshold": float(best_threshold),
-    "confusion_matrix": confusion_matrix(y_test, final_preds).tolist(),
-    "classification_report": classification_report(y_test, final_preds, output_dict=True),
-    "feature_names": list(X.columns),
-    "thresholds": {
-        "study_hours_p10": float(np.percentile(X["TotalStudyHours"], 10)),
-        "attendance_p10": float(np.percentile(X["TotalAttendance"], 10)),
-        "previous_grade_p10": float(np.percentile(X["PreviousGrade"], 10)),
-    },
-    "model_results": model_results,
-}
+    grid = GridSearchCV(
+        RandomForestClassifier(random_state=42),
+        params,
+        cv=3,
+        scoring="f1",
+        n_jobs=-1,
+    )
+    grid.fit(X_train, y_train)
 
-print("Final Model Metrics:")
-print(json.dumps(metrics, indent=2))
+    best_model = grid.best_estimator_
 
-with open("student_model.pkl", "wb") as f:
-    pickle.dump(best_model, f)
+    y_proba = best_model.predict_proba(X_test)[:, 1]
 
-with open("model_metrics.json", "w") as f:
-    json.dump(metrics, f, indent=2)
+    thresholds = np.linspace(0.1, 0.9, 81)
+    macro_f1_scores = [
+        f1_score(y_test, (y_proba >= t).astype(int), average="macro")
+        for t in thresholds
+    ]
+    best_threshold = thresholds[int(np.argmax(macro_f1_scores))]
+
+    final_preds = (y_proba >= best_threshold).astype(int)
+
+    metrics = {
+        "accuracy": float(accuracy_score(y_test, final_preds)),
+        "precision": float(precision_score(y_test, final_preds)),
+        "recall": float(recall_score(y_test, final_preds)),
+        "f1": float(f1_score(y_test, final_preds)),
+        "roc_auc": float(roc_auc_score(y_test, y_proba)),
+        "best_threshold": float(best_threshold),
+        "confusion_matrix": confusion_matrix(y_test, final_preds).tolist(),
+        "classification_report": classification_report(y_test, final_preds, output_dict=True),
+        "feature_names": list(X.columns),
+        "thresholds": {
+            "study_hours_p10": float(np.percentile(X["TotalStudyHours"], 10)),
+            "attendance_p10": float(np.percentile(X["TotalAttendance"], 10)),
+            "previous_grade_p10": float(np.percentile(X["PreviousGrade"], 10)),
+        },
+        "model_results": model_results,
+    }
+
+    print("Final Model Metrics:")
+    print(json.dumps(metrics, indent=2))
+
+    with open(model_path, "wb") as f:
+        pickle.dump(best_model, f)
+
+    with open(metrics_path, "w") as f:
+        json.dump(metrics, f, indent=2)
+
+    return metrics
+
+
+if __name__ == "__main__":
+    train_and_save()
