@@ -281,7 +281,7 @@ else:
         extracurricular_level = st.slider("Extracurricular Activities", 0, 3, 1)
         st.caption(f"Selected: {extracurricular_labels[extracurricular_level]}")
 
-    total_study = st.number_input("Total Study Hours", 0.0, 50.0, 15.0)
+    total_study = st.number_input("Total Study Hours of a week", 0.0, 50.0, 15.0)
     total_attendance = st.number_input("Attendance Score", 0.0, 100.0, 75.0)
 
     # -------- Prediction Map --------
