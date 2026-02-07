@@ -16,11 +16,9 @@ venv/
 .ipynb_checkpoints/
 
 # Data & artifacts
-*.csv
+
 *.parquet
-*.joblib
-*.pkl
-*.pickle
+
 model_metrics.json
 
 # OS
