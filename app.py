@@ -125,6 +125,102 @@ if page == "Admin Page":
     except Exception:
         st.caption("Heatmap unavailable.")
 
+    # -------- Pass Rate Relations --------
+    st.subheader("Pass Rate Relations")
+    try:
+        reg_df = pd.read_csv("student_data_cleaned.csv")
+
+        if "Pass" in reg_df.columns:
+            x_field = "TotalStudyHours" if "TotalStudyHours" in reg_df.columns else None
+            if not x_field and "TotalAttendance" in reg_df.columns:
+                x_field = "TotalAttendance"
+
+            if x_field:
+                reg_df = reg_df.dropna()
+
+                candidate_fields = [
+                    "TotalStudyHours",
+                    "TotalAttendance",
+                    "PreviousGrade",
+                    "ExtracurricularActivities",
+                ]
+
+                feature_fields = [
+                    field for field in candidate_fields
+                    if field in reg_df.columns and field != "Pass"
+                ]
+
+                if not feature_fields:
+                    feature_fields = [x_field]
+
+                cols = st.columns(2)
+                for idx, field in enumerate(feature_fields):
+                    chart_df = reg_df[[field, "Pass"]].dropna()
+                    if chart_df.empty:
+                        continue
+
+                    chart_spec = {
+                        "title": f"Pass rate by {field}",
+                        "layer": [
+                            {
+                                "transform": [
+                                    {"bin": {"maxbins": 20}, "field": field, "as": "x_bin"},
+                                    {"aggregate": [
+                                        {"op": "mean", "field": "Pass", "as": "pass_rate"},
+                                        {"op": "count", "field": "Pass", "as": "count"},
+                                    ], "groupby": ["x_bin"]},
+                                ],
+                                "mark": {"type": "line", "color": "#ff4b4b", "size": 2},
+                                "encoding": {
+                                    "x": {"field": "x_bin", "type": "quantitative", "title": field},
+                                    "y": {
+                                        "field": "pass_rate",
+                                        "type": "quantitative",
+                                        "title": "Pass Rate",
+                                        "scale": {"domain": [0, 1]},
+                                    },
+                                },
+                            },
+                            {
+                                "transform": [
+                                    {"bin": {"maxbins": 20}, "field": field, "as": "x_bin"},
+                                    {"aggregate": [
+                                        {"op": "mean", "field": "Pass", "as": "pass_rate"},
+                                        {"op": "count", "field": "Pass", "as": "count"},
+                                    ], "groupby": ["x_bin"]},
+                                ],
+                                "mark": {"type": "circle", "color": "#ffd166", "size": 70},
+                                "encoding": {
+                                    "x": {"field": "x_bin", "type": "quantitative", "title": field},
+                                    "y": {
+                                        "field": "pass_rate",
+                                        "type": "quantitative",
+                                        "title": "Pass Rate",
+                                        "scale": {"domain": [0, 1]},
+                                    },
+                                    "tooltip": [
+                                        {"field": "x_bin", "type": "quantitative", "title": field},
+                                        {"field": "pass_rate", "type": "quantitative", "format": ".2f", "title": "Pass Rate"},
+                                        {"field": "count", "type": "quantitative", "title": "Samples"},
+                                    ],
+                                },
+                            },
+                        ],
+                    }
+
+                    with cols[idx % 2]:
+                        st.vega_lite_chart(
+                            chart_df,
+                            chart_spec,
+                            use_container_width=True,
+                        )
+            else:
+                st.caption("Pass rate charts unavailable (missing study/attendance columns).")
+        else:
+            st.caption("Regression plot unavailable (missing Pass column).")
+    except Exception:
+        st.caption("Regression plot unavailable.")
+
 # PREDICTOR PANEL 
 else:
 
